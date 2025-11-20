@@ -14,199 +14,168 @@ import AddTaskModal from "../components/tasks/AddTaskModal";
 import DeleteTaskModal from "../components/tasks/DeleteTaskModal";
 
 export default function TeacherDashboard() {
-  // ---- STUDENTS ----
-  const [students, setStudents] = useState([]);
-  const [showAddStudent, setShowAddStudent] = useState(false);
-  const [newStudentName, setNewStudentName] = useState("");
-  const [deleteId, setDeleteId] = useState(null);
-
-  // ---- TASKS ----
-  const [tasks, setTasks] = useState([]);
-  const [showAddTask, setShowAddTask] = useState(false);
-  const [taskTitle, setTaskTitle] = useState("");
-  const [deleteTaskId, setDeleteTaskId] = useState(null);
-
   const navigate = useNavigate();
 
-  // ---- PIN LOCK ----
+  const [students, setStudents] = useState([]);
+  const [tasks, setTasks] = useState([]);
+
+  // UI state
+  const [showAddStudent, setShowAddStudent] = useState(false);
+  const [deleteStudentId, setDeleteStudentId] = useState(null);
+
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [deleteTaskId, setDeleteTaskId] = useState(null);
+
+  const [newStudentName, setNewStudentName] = useState("");
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+
+  // 🚨 Block dashboard access unless unlocked
   useEffect(() => {
-    if (!isDashboardUnlocked()) {
-      navigate("/pin", { replace: true });
-    }
+    if (!isDashboardUnlocked()) navigate("/pin", { replace: true });
   }, [navigate]);
 
-  // ---- LOAD STUDENTS ----
+  // ---------- LOADERS ----------
   async function loadStudents() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
+    if (!user) return;
 
-    if (!user) {
-      return setTimeout(loadStudents, 200);
-    }
-
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("students")
       .select("*")
       .eq("teacher_id", user.id)
       .order("student_name", { ascending: true });
 
-    if (!error) setStudents(data);
+    setStudents(data || []);
   }
 
-  // ---- LOAD TASKS ----
   async function loadTasks() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-
     if (!user) return;
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("tasks")
       .select("*")
       .eq("teacher_id", user.id)
       .order("created_at", { ascending: true });
 
-    if (!error) setTasks(data);
+    setTasks(data || []);
   }
 
-  // ---- INITIAL LOAD ----
   useEffect(() => {
-    if (isDashboardUnlocked()) {
-      loadStudents();
-      loadTasks();
-    }
+    loadStudents();
+    loadTasks();
   }, []);
 
-  // ---- ADD STUDENT ----
+  // ---------- STUDENT ACTIONS ----------
   async function addStudent() {
     if (!newStudentName.trim()) return;
 
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
 
-    const { error } = await supabase.from("students").insert([
+    await supabase.from("students").insert([
       {
+        teacher_id: user.id,
         student_name: newStudentName,
-        teacher_id: user.id,
       },
     ]);
 
-    if (!error) {
-      setNewStudentName("");
-      setShowAddStudent(false);
-      loadStudents();
-    }
+    setNewStudentName("");
+    setShowAddStudent(false);
+    loadStudents();
   }
 
-  // ---- DELETE STUDENT ----
   async function deleteStudent() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { error } = await supabase
-      .from("students")
-      .delete()
-      .eq("id", deleteId)
-      .eq("teacher_id", user.id);
-
-    if (!error) {
-      setDeleteId(null);
-      loadStudents();
-    }
+    await supabase.from("students").delete().eq("id", deleteStudentId);
+    setDeleteStudentId(null);
+    loadStudents();
   }
 
-  // ---- ADD TASK ----
+  // ---------- TASK ACTIONS ----------
   async function addTask() {
-    if (!taskTitle.trim()) return;
+    if (!newTaskTitle.trim()) return;
 
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
 
-    const { error } = await supabase.from("tasks").insert([
+    await supabase.from("tasks").insert([
       {
-        title: taskTitle,
         teacher_id: user.id,
+        title: newTaskTitle,
       },
     ]);
 
-    if (!error) {
-      setTaskTitle("");
-      setShowAddTask(false);
-      loadTasks();
-    }
+    setNewTaskTitle("");
+    setShowAddTask(false);
+    loadTasks();
   }
 
-  // ---- DELETE TASK ----
   async function deleteTask() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { error } = await supabase
-      .from("tasks")
-      .delete()
-      .eq("id", deleteTaskId)
-      .eq("teacher_id", user.id);
-
-    if (!error) {
-      setDeleteTaskId(null);
-      loadTasks();
-    }
+    await supabase.from("tasks").delete().eq("id", deleteTaskId);
+    setDeleteTaskId(null);
+    loadTasks();
   }
 
+  // ---------- UI ----------
   return (
     <div className="min-h-screen bg-white p-6">
-    <h1 className="text-3xl font-bold mb-6">Teacher Dashboard</h1>
 
-<button
-  onClick={() => navigate("/classroom")}
-  className="mb-6 px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 text-gray-800"
->
-  ← Back to Classroom
-</button>
-
-
-      {/* ---------- STUDENTS PANEL ---------- */}
-      <div className="bg-white shadow rounded-xl p-6">
-        <h2 className="text-xl font-semibold mb-4">Students</h2>
-
-        <StudentList
-          students={students}
-          onDelete={(id) => setDeleteId(id)}
-        />
+      {/* Header */}
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Leerkracht Dashboard</h1>
 
         <button
-          className="mt-4 w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          onClick={() => setShowAddStudent(true)}
+          onClick={() => navigate("/classroom")}
+          className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
         >
-          + Add Student
+          ← Terug naar klasoverzicht
         </button>
       </div>
 
-      {/* ---------- TASKS PANEL ---------- */}
-      <div className="bg-white shadow rounded-xl p-6 mt-8">
-        <h2 className="text-xl font-semibold mb-4">Tasks</h2>
+      {/* TWO-COLUMN LAYOUT */}
+      <div className="flex gap-8">
 
-        <TaskList tasks={tasks} onDelete={(id) => setDeleteTaskId(id)} />
+        {/* LEFT COLUMN — TASKS */}
+        <div className="w-2/3 bg-gray-50 border rounded-xl p-6 shadow">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold">Taken</h2>
+            <button
+              onClick={() => setShowAddTask(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              + Taak toevoegen
+            </button>
+          </div>
 
-        <button
-          className="mt-4 w-full py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-          onClick={() => setShowAddTask(true)}
-        >
-          + Add Task
-        </button>
+          <TaskList tasks={tasks} onDelete={(id) => setDeleteTaskId(id)} />
+        </div>
+
+        {/* RIGHT COLUMN — STUDENTS */}
+        <div className="w-1/3 bg-gray-50 border rounded-xl p-6 shadow">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold">Leerlingen</h2>
+            <button
+              onClick={() => setShowAddStudent(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              + Leerling toevoegen
+            </button>
+          </div>
+
+          <StudentList
+            students={students}
+            onDelete={(id) => setDeleteStudentId(id)}
+          />
+        </div>
       </div>
 
-      {/* ---- Add Student Modal ---- */}
+      {/* STUDENT MODALS */}
       {showAddStudent && (
         <AddStudentModal
           name={newStudentName}
@@ -216,25 +185,23 @@ export default function TeacherDashboard() {
         />
       )}
 
-      {/* ---- Delete Student Modal ---- */}
-      {deleteId && (
+      {deleteStudentId && (
         <DeleteStudentModal
           onConfirm={deleteStudent}
-          onClose={() => setDeleteId(null)}
+          onClose={() => setDeleteStudentId(null)}
         />
       )}
 
-      {/* ---- Add Task Modal ---- */}
+      {/* TASK MODALS */}
       {showAddTask && (
         <AddTaskModal
-          title={taskTitle}
-          setTitle={setTaskTitle}
+          title={newTaskTitle}
+          setTitle={setNewTaskTitle}
           onAdd={addTask}
           onClose={() => setShowAddTask(false)}
         />
       )}
 
-      {/* ---- Delete Task Modal ---- */}
       {deleteTaskId && (
         <DeleteTaskModal
           onConfirm={deleteTask}
