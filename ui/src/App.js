@@ -5,7 +5,10 @@ import supabase from "./supabaseClient";
 import TeacherLogin from "./components/TeacherLogin";
 import ClassroomScreen from "./screens/ClassroomScreen";
 import PinScreen from "./screens/PinScreen";
+import ChangePinScreen from "./screens/ChangePinScreen";
 import TeacherDashboard from "./screens/TeacherDashboard";
+
+
 
 function AuthListener() {
   const navigate = useNavigate();
@@ -49,6 +52,7 @@ export default function App() {
         <Route path="/classroom" element={<ClassroomScreen />} />
         <Route path="/pin" element={<PinScreen />} />
         <Route path="/dashboard" element={<TeacherDashboard />} />
+        <Route path="/change-pin" element={<ChangePinScreen />} />
       </Routes>
     </BrowserRouter>
   );
