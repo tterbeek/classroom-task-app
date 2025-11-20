@@ -5,21 +5,21 @@ export default function DeleteStudentModal({ onConfirm, onClose }) {
         <h2 className="text-lg font-semibold mb-3">Delete Student?</h2>
 
         <p className="mb-4 text-gray-700">
-          Are you sure you want to delete this student?
+          Ben je zeker dat je deze leerling wilt verijwderen?
         </p>
 
         <button
           onClick={onConfirm}
           className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 mb-2"
         >
-          Delete
+          Verwijder
         </button>
 
         <button
           onClick={onClose}
           className="w-full bg-gray-300 py-2 rounded-lg hover:bg-gray-400"
         >
-          Cancel
+          Annuleren
         </button>
       </div>
     </div>

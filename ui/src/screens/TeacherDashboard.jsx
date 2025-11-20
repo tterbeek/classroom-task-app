@@ -19,7 +19,6 @@ export default function TeacherDashboard() {
   const [students, setStudents] = useState([]);
   const [tasks, setTasks] = useState([]);
 
-  // UI state
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [deleteStudentId, setDeleteStudentId] = useState(null);
 
@@ -28,8 +27,9 @@ export default function TeacherDashboard() {
 
   const [newStudentName, setNewStudentName] = useState("");
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskIcon, setNewTaskIcon] = useState("📘");
 
-  // 🚨 Block dashboard access unless unlocked
+  // Protect the dashboard
   useEffect(() => {
     if (!isDashboardUnlocked()) navigate("/pin", { replace: true });
   }, [navigate]);
@@ -73,7 +73,6 @@ export default function TeacherDashboard() {
   // ---------- STUDENT ACTIONS ----------
   async function addStudent() {
     if (!newStudentName.trim()) return;
-
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -104,14 +103,18 @@ export default function TeacherDashboard() {
       data: { user },
     } = await supabase.auth.getUser();
 
-    await supabase.from("tasks").insert([
+    const { error } = await supabase.from("tasks").insert([
       {
-        teacher_id: user.id,
         title: newTaskTitle,
+        icon: newTaskIcon,
+        teacher_id: user.id,
       },
     ]);
 
+    if (error) console.error(error);
+
     setNewTaskTitle("");
+    setNewTaskIcon("📘");
     setShowAddTask(false);
     loadTasks();
   }
@@ -141,22 +144,47 @@ export default function TeacherDashboard() {
       {/* TWO-COLUMN LAYOUT */}
       <div className="flex gap-8">
 
-        {/* LEFT COLUMN — TASKS */}
-        <div className="w-2/3 bg-gray-50 border rounded-xl p-6 shadow">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-semibold">Taken</h2>
+        {/* LEFT COLUMN = TASKS (2/3 width) */}
+        <div className="w-2/3 bg-white shadow rounded-xl p-6">
+          
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Taken</h2>
+
             <button
               onClick={() => setShowAddTask(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
-              + Taak toevoegen
+              + Nieuwe Taak
             </button>
           </div>
 
-          <TaskList tasks={tasks} onDelete={(id) => setDeleteTaskId(id)} />
+          {tasks.length === 0 ? (
+            <p className="text-gray-500 italic">Nog geen taken toegevoegd.</p>
+          ) : (
+            <ul className="space-y-2">
+              {tasks.map((task) => (
+                <li
+                  key={task.id}
+                  className="flex items-center justify-between bg-gray-50 px-4 py-3 rounded-lg border"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{task.icon || "📘"}</span>
+                    <span className="text-gray-800">{task.title}</span>
+                  </div>
+
+                  <button
+                    onClick={() => setDeleteTaskId(task.id)}
+                    className="text-red-600 hover:underline"
+                  >
+                    Verwijder
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
-        {/* RIGHT COLUMN — STUDENTS */}
+        {/* RIGHT COLUMN = STUDENTS (1/3 width) */}
         <div className="w-1/3 bg-gray-50 border rounded-xl p-6 shadow">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-semibold">Leerlingen</h2>
@@ -197,6 +225,8 @@ export default function TeacherDashboard() {
         <AddTaskModal
           title={newTaskTitle}
           setTitle={setNewTaskTitle}
+          selectedIcon={newTaskIcon}
+          setSelectedIcon={setNewTaskIcon}
           onAdd={addTask}
           onClose={() => setShowAddTask(false)}
         />

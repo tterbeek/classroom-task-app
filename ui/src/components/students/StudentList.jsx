@@ -18,7 +18,7 @@ export default function StudentList({ students, onDelete }) {
             onClick={() => onDelete(student.id)}
             className="text-red-600 hover:text-red-800"
           >
-            Delete
+            Verwijder
           </button>
         </div>
       ))}

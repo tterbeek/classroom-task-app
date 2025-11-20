@@ -115,29 +115,34 @@ function closeModal() {
 
         </div>
 
-        {/* RIGHT COLUMN — TASKS (1/3) */}
-        <div className="w-1/3 bg-gray-50 border rounded-xl p-6 shadow max-h-[80vh] overflow-auto">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">
-            Taken van vandaag
-          </h2>
+{/* RIGHT COLUMN — TASKS (1/3) */}
+<div className="w-1/3 bg-gray-50 border rounded-xl p-6 shadow max-h-[80vh] overflow-auto">
+  <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">
+    Taken van vandaag
+  </h2>
 
-          {tasks.length === 0 ? (
-            <p className="text-gray-500 italic text-center">
-              Er zijn nog geen taken toegevoegd.
-            </p>
-          ) : (
-            <ul className="space-y-3">
-              {tasks.map((t) => (
-                <li
-                  key={t.id}
-                  className="p-4 bg-white border rounded-xl text-lg shadow"
-                >
-                  • {t.title}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+  {tasks.length === 0 ? (
+    <p className="text-gray-500 italic text-center">
+      Er zijn nog geen taken toegevoegd.
+    </p>
+  ) : (
+    <ul className="space-y-3">
+      {tasks.map((t) => (
+        <li
+          key={t.id}
+          className="p-4 bg-white border rounded-xl text-lg shadow flex items-center gap-3"
+        >
+          {/* Task icon */}
+          <span className="text-3xl">{t.icon || "📘"}</span>
+
+          {/* Task title */}
+          <span>{t.title}</span>
+        </li>
+      ))}
+    </ul>
+  )}
+</div>
+
       </div>
 
       {/* Student Task Modal */}
