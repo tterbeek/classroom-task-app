@@ -67,7 +67,7 @@ export default function StudentTaskModal({ student, onClose }) {
     // 🔊 Play sounds
     if (newValue) {
       swoosh.volume = 0.9;
-      swoosh.play();
+      playSafe(swoosh);
     }
 
     // Check if all tasks are completed
@@ -77,9 +77,16 @@ export default function StudentTaskModal({ student, onClose }) {
 
     if (allDone) {
       ting.volume = 1;
-      ting.play();
+      playSafe(ting);
     }
   }
+
+// 🔊 Safe sound playback function
+function playSafe(audio) {
+  if (!audio) return;
+  audio.play().catch(() => {});
+}
+
 
   // Close when clicking outside modal
   function backdropClose(e) {

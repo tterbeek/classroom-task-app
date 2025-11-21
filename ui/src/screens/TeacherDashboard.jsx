@@ -36,6 +36,8 @@ export default function TeacherDashboard() {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskIcon, setNewTaskIcon] = useState("📘");
 
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
   // -------------------------------------------------------
   // 1️⃣ Protect the dashboard — must unlock via PIN first
   // -------------------------------------------------------
@@ -67,6 +69,30 @@ export default function TeacherDashboard() {
   loadTeacherSettings();
 }, []);
 
+async function resetAllTaskStatuses() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  // Delete all task_status entries belonging to this teacher
+  const { error } = await supabase
+    .from("task_status")
+    .delete()
+    .in(
+      "task_id",
+      tasks.map((t) => t.id)
+    );
+
+  if (error) {
+    console.error("Error resetting task progress:", error);
+    alert("Er ging iets mis.");
+    return;
+  }
+
+
+}
 
 
 
@@ -266,24 +292,42 @@ async function addStudent(name) {
         <div className="w-2/3 bg-white shadow rounded-xl p-6">
           
 <div className="flex items-center justify-between mb-4">
+
+  {/* LEFT SIDE — title + edit icon */}
   <div className="flex items-center gap-3">
     <h2 className="text-xl font-semibold">{taskListTitle}</h2>
 
-    {/* EDIT ICON NEXT TO TITLE */}
+    {/* EDIT TITLE ICON */}
     <button
       onClick={() => setShowEditTaskTitle(true)}
       className="text-gray-500 hover:text-gray-700"
+      title="Titel aanpassen"
     >
       ✏️
     </button>
   </div>
 
-  <button
-    onClick={() => setShowAddTask(true)}
-    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+  {/* RIGHT SIDE — new task + reset icon */}
+  <div className="flex items-center gap-3">
+
+    {/* RESET ALL TASK COMPLETIONS */}
+      <button
+    onClick={() => setShowResetConfirm(true)}
+    className="text-red-500 hover:text-red-700 text-xl"
+    title="Reset alle voortgang"
   >
-    + Nieuwe taken
+    ⟲
   </button>
+
+    {/* ADD TASK BUTTON */}
+    <button
+      onClick={() => setShowAddTask(true)}
+      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+    >
+      + Nieuwe taken
+    </button>
+  </div>
+
 </div>
 
           {tasks.length === 0 ? (
@@ -367,6 +411,39 @@ async function addStudent(name) {
         />
       )}
 
+{showResetConfirm && (
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-sm">
+      <h2 className="text-xl font-bold mb-4">
+        Alle voortgang terugzetten?
+      </h2>
+
+      <p className="text-gray-600 mb-6">
+        Dit verwijdert alle afgevinkte taken voor elke leerling. 
+        Weet je het zeker?
+      </p>
+
+      <div className="flex justify-end gap-3">
+        <button
+          onClick={() => setShowResetConfirm(false)}
+          className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+        >
+          Annuleren
+        </button>
+
+        <button
+          onClick={async () => {
+            await resetAllTaskStatuses();
+            setShowResetConfirm(false);
+          }}
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+        >
+          Reset
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
 
       {showAddTask && (
