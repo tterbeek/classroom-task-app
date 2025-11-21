@@ -5,14 +5,18 @@ import { Cog6ToothIcon } from "@heroicons/react/24/outline";
 
 import StudentGrid from "../components/classroom/StudentGrid";
 import StudentTaskModal from "../components/classroom/StudentTaskModal";
+import NewTeacherWelcomeModal from "../components/NewTeacherWelcomeModal"; 
+
 
 export default function ClassroomScreen() {
   const [students, setStudents] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [activeStudent, setActiveStudent] = useState(null);
   const [progress, setProgress] = useState({});
-
+  const [showWelcome, setShowWelcome] = useState(false);
   const navigate = useNavigate();
+  const [taskListTitle, setTaskListTitle] = useState("Taken van vandaag");
+
 
   useEffect(() => {
     loadStudents();
@@ -35,6 +39,48 @@ export default function ClassroomScreen() {
 
     if (data) setStudents(data);
   }
+
+useEffect(() => {
+    async function checkTeacherPin() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const { data: teacher } = await supabase
+        .from("teachers")
+        .select("pin_code")
+        .eq("id", user.id)
+        .single();
+
+      // If first-time user → show welcome modal
+      if (teacher?.pin_code === "0000") {
+        setShowWelcome(true);
+      }
+    }
+
+    checkTeacherPin();
+  }, []);
+
+  // loading tasklisttitle
+useEffect(() => {
+  async function loadTitle() {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const { data } = await supabase
+      .from("teachers")
+      .select("task_list_title")
+      .eq("id", user.id)
+      .single();
+
+    if (data?.task_list_title) {
+      setTaskListTitle(data.task_list_title);
+    }
+  }
+  loadTitle();
+}, []);
+
 
   async function loadTasks() {
     const {
@@ -114,9 +160,9 @@ function closeModal() {
 
       {/* RIGHT COLUMN — TASKS */}
       <div className="w-1/3 bg-gray-50 border rounded-xl p-6 shadow">
-        <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">
-          Taken van vandaag
-        </h2>
+      <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">
+        {taskListTitle}
+      </h2>
 
         {tasks.length === 0 ? (
           <p className="text-gray-500 italic text-center">
@@ -138,6 +184,10 @@ function closeModal() {
       </div>
 
     </div>
+
+{showWelcome && (
+  <NewTeacherWelcomeModal onClose={() => setShowWelcome(false)} />
+)}
 
     {/* Student Task Modal */}
     {activeStudent && (

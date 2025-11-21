@@ -2,6 +2,7 @@ import { isDashboardUnlocked } from "../auth/DashboardLock";
 import { useNavigate } from "react-router-dom";
 import React, { useEffect, useState } from "react";
 import supabase from "../supabaseClient";
+import EditTaskListTitleModal from "../components/tasks/EditTaskListTitleModal";
 
 // Student components
 import StudentList from "../components/students/StudentList";
@@ -13,6 +14,8 @@ import EditTaskModal from "../components/tasks/EditTaskModal";
 import AddTaskModal from "../components/tasks/AddTaskModal";
 import DeleteTaskModal from "../components/tasks/DeleteTaskModal";
 
+
+
 export default function TeacherDashboard() {
   const navigate = useNavigate();
 
@@ -20,6 +23,8 @@ export default function TeacherDashboard() {
   const [tasks, setTasks] = useState([]);
   const [editTask, setEditTask] = useState(null); // holds task being edited
 
+  const [taskListTitle, setTaskListTitle] = useState("Taken van vandaag");
+  const [showEditTaskTitle, setShowEditTaskTitle] = useState(false);
 
 
   const [showAddStudent, setShowAddStudent] = useState(false);
@@ -28,7 +33,6 @@ export default function TeacherDashboard() {
   const [showAddTask, setShowAddTask] = useState(false);
   const [deleteTaskId, setDeleteTaskId] = useState(null);
 
-  const [newStudentName, setNewStudentName] = useState("");
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskIcon, setNewTaskIcon] = useState("📘");
 
@@ -41,6 +45,30 @@ export default function TeacherDashboard() {
       navigate("/pin", { replace: true });
     }
   }, [navigate]);
+
+
+// Title of the dagtaken for that teacher
+  useEffect(() => {
+  async function loadTeacherSettings() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("teachers")
+      .select("task_list_title")
+      .eq("id", user.id)
+      .single();
+
+    if (data?.task_list_title) {
+      setTaskListTitle(data.task_list_title);
+    }
+  }
+
+  loadTeacherSettings();
+}, []);
+
+
+
 
   // -------------------------------------------------------
   // 2️⃣ FIRST-TIME PIN CHECK (ONLY WHEN DASHBOARD IS UNLOCKED)
@@ -77,6 +105,12 @@ export default function TeacherDashboard() {
     checkPin();
   }, [navigate]);
 
+
+  useEffect(() => {
+  return () => {
+    setShowAddStudent(false);
+  };
+}, []);
 
   // ---------- LOADERS ----------
   async function loadStudents() {
@@ -134,26 +168,34 @@ async function updateTask(taskId, newTitle, newIcon) {
   loadTasks();
 }
 
+// Modifying title of tasklist
+async function saveTaskListTitle(newTitle) {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  await supabase
+    .from("teachers")
+    .update({ task_list_title: newTitle })
+    .eq("id", user.id);
+
+  setTaskListTitle(newTitle);
+  setShowEditTaskTitle(false);
+}
 
 
   // ---------- STUDENT ACTIONS ----------
-  async function addStudent() {
-    if (!newStudentName.trim()) return;
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+async function addStudent(name) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    await supabase.from("students").insert([
-      {
-        teacher_id: user.id,
-        student_name: newStudentName,
-      },
-    ]);
+  await supabase.from("students").insert([
+    { teacher_id: user.id, student_name: name }
+  ]);
 
-    setNewStudentName("");
-    setShowAddStudent(false);
-    loadStudents();
-  }
+  loadStudents();
+}
+
+
 
   async function deleteStudent() {
     await supabase.from("students").delete().eq("id", deleteStudentId);
@@ -179,10 +221,11 @@ async function updateTask(taskId, newTitle, newIcon) {
 
     if (error) console.error(error);
 
-    setNewTaskTitle("");
-    setNewTaskIcon("📘");
-    setShowAddTask(false);
-    loadTasks();
+    setNewTaskTitle("");     // clear field
+    setNewTaskIcon("📘");    // reset icon
+    loadTasks();             // keep modal open
+    // DON'T CLOSE THE MODAL HERE
+
   }
 
   async function deleteTask() {
@@ -222,16 +265,26 @@ async function updateTask(taskId, newTitle, newIcon) {
         {/* LEFT COLUMN = TASKS (2/3 width) */}
         <div className="w-2/3 bg-white shadow rounded-xl p-6">
           
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Taken</h2>
+<div className="flex items-center justify-between mb-4">
+  <div className="flex items-center gap-3">
+    <h2 className="text-xl font-semibold">{taskListTitle}</h2>
 
-            <button
-              onClick={() => setShowAddTask(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              + Nieuwe Taak
-            </button>
-          </div>
+    {/* EDIT ICON NEXT TO TITLE */}
+    <button
+      onClick={() => setShowEditTaskTitle(true)}
+      className="text-gray-500 hover:text-gray-700"
+    >
+      ✏️
+    </button>
+  </div>
+
+  <button
+    onClick={() => setShowAddTask(true)}
+    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+  >
+    + Nieuwe taken
+  </button>
+</div>
 
           {tasks.length === 0 ? (
             <p className="text-gray-500 italic">Nog geen taken toegevoegd.</p>
@@ -275,7 +328,7 @@ async function updateTask(taskId, newTitle, newIcon) {
               onClick={() => setShowAddStudent(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
-              + Leerling toevoegen
+              + Nieuwe leerlingen
             </button>
           </div>
 
@@ -287,14 +340,16 @@ async function updateTask(taskId, newTitle, newIcon) {
       </div>
 
       {/* STUDENT MODALS */}
-      {showAddStudent && (
-        <AddStudentModal
-          name={newStudentName}
-          setName={setNewStudentName}
-          onAdd={addStudent}
-          onClose={() => setShowAddStudent(false)}
-        />
-      )}
+{showAddStudent && (
+  <AddStudentModal
+    onAdd={(name) => {
+      addStudent(name);
+    }}
+    onClose={() => setShowAddStudent(false)}
+  />
+)}
+
+
 
       {deleteStudentId && (
         <DeleteStudentModal
@@ -304,6 +359,16 @@ async function updateTask(taskId, newTitle, newIcon) {
       )}
 
       {/* TASK MODALS */}
+      {showEditTaskTitle && (
+        <EditTaskListTitleModal
+          currentTitle={taskListTitle}
+          onSave={saveTaskListTitle}
+          onClose={() => setShowEditTaskTitle(false)}
+        />
+      )}
+
+
+
       {showAddTask && (
         <AddTaskModal
           title={newTaskTitle}

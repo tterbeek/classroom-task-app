@@ -1,35 +1,57 @@
-export default function AddStudentModal({
-  onClose,
-  onAdd,
-  name,
-  setName,
-}) {
+import { useState } from "react";
+
+export default function AddStudentModal({ onAdd, onClose }) {
+  const [name, setName] = useState("");
+
+  function handleAdd() {
+    if (!name.trim()) return;
+
+    onAdd(name);      // parent handles inserting
+    setName("");      // clear for next entry
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAdd();
+    }
+  }
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-      <div className="bg-white p-6 rounded-xl w-full max-w-sm shadow-xl">
-        <h2 className="text-lg font-semibold mb-3">Add New Student</h2>
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white p-6 rounded-xl shadow-xl w-full max-w-md"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-2xl font-bold mb-4">Leerling toevoegen</h2>
 
         <input
           type="text"
-          placeholder="Student name"
-          className="w-full p-2 border rounded mb-4"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="w-full border p-3 rounded-lg mb-4"
+          placeholder="Naam leerling"
         />
 
-        <button
-          onClick={onAdd}
-          className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 mb-2"
-        >
-          Add Student
-        </button>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+          >
+            Annuleren
+          </button>
 
-        <button
-          onClick={onClose}
-          className="w-full bg-gray-300 py-2 rounded-lg hover:bg-gray-400"
-        >
-          Cancel
-        </button>
+          <button
+            onClick={handleAdd}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Toevoegen
+          </button>
+        </div>
       </div>
     </div>
   );
