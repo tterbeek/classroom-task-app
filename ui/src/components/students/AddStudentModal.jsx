@@ -42,7 +42,7 @@ export default function AddStudentModal({ onAdd, onClose }) {
             onClick={onClose}
             className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
           >
-            Annuleren
+            Sluiten
           </button>
 
           <button

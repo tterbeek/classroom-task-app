@@ -58,7 +58,7 @@ export default function AddTaskModal({
               onClick={onClose}
               className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300"
             >
-              Annuleren
+              Sluiten
             </button>
 
             <button

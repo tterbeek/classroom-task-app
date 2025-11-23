@@ -113,7 +113,7 @@ function playSafe(audio) {
         </h1>
 
         {/* Task List */}
-        <div className="space-y-4 max-h-[60vh] overflow-auto pr-2">
+        <div className="space-y-4 max-h-[85vh] overflow-auto pr-2">
           {tasks.length === 0 && (
             <p className="text-gray-500 italic text-center">
               Geen taken beschikbaar.
