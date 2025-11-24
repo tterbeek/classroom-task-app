@@ -1,60 +1,63 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import supabase from "../supabaseClient";
 
 export default function TeacherLogin() {
+  const navigate = useNavigate();
+  const [checkingSession, setCheckingSession] = useState(true);
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [codeSent, setCodeSent] = useState(false);
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+
+  // 1️⃣ CHECK EXISTING SESSION BEFORE SHOWING LOGIN
+  useEffect(() => {
+    async function checkSession() {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        navigate("/classroom", { replace: true });
+        return;
+      }
+      setCheckingSession(false);
+    }
+    checkSession();
+  }, [navigate]);
+
+  if (checkingSession) {
+    return <div className="min-h-screen bg-white" />; // blank while checking
+  }
 
   const isValidEmail = (value) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-  // STEP 1: SEND OTP EMAIL
-  const sendOtp = async () => {
-    if (!isValidEmail(email)) {
-      alert("Vul een geldig e-mailadres in.");
-      return;
-    }
+  async function sendOtp() {
+    if (!isValidEmail(email)) return alert("Vul een geldig e-mailadres in.");
 
     setLoading(true);
-
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { shouldCreateUser: true }, // allow auto-signup
+      options: { shouldCreateUser: true },
     });
-
     setLoading(false);
 
-    if (error) {
-      alert("Kon geen code sturen: " + error.message);
-      return;
-    }
+    if (error) return alert("Kon geen code sturen: " + error.message);
 
     setCodeSent(true);
-  };
+  }
 
-  // STEP 2: VERIFY OTP
-  const verifyOtp = async () => {
+  async function verifyOtp() {
     setLoading(true);
-
     const { error } = await supabase.auth.verifyOtp({
       email,
       token: otp,
       type: "email",
     });
-
     setLoading(false);
 
-    if (error) {
-      alert("Code onjuist: " + error.message);
-      return;
-    }
+    if (error) return alert("Code onjuist: " + error.message);
 
-    navigate("/classroom"); // SUCCESS 🎉
-  };
+    navigate("/classroom", { replace: true });
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white p-6">
@@ -81,12 +84,11 @@ export default function TeacherLogin() {
             >
               {loading ? "Versturen..." : "Stuur inlogcode"}
             </button>
-
           </>
         ) : (
           <>
             <p className="mb-2 text-gray-600">
-              Vul de 6-cijferige code in die naar {email} is gestuurd.
+              Vul de code in die naar {email} is gestuurd.
             </p>
 
             <input
