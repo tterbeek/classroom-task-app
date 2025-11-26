@@ -2,6 +2,7 @@ const ICONS = [
   "📘", "✏️", "🧮", "📚", "📝",
   "🔬", "🌍", "🎨", "🎵", "🧪",
   "💡", "🔢", "📐", "📊", "🔭",
+  "🎲", "💻",
 ];
 
 export default function TaskIconPicker({ selectedIcon, onSelect }) {
