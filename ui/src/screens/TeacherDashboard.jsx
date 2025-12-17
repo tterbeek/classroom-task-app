@@ -24,6 +24,7 @@ export default function TeacherDashboard() {
   const [editTask, setEditTask] = useState(null); // holds task being edited
 
   const [taskListTitle, setTaskListTitle] = useState("Taken van vandaag");
+  const [tasksVisibleOnHome, setTasksVisibleOnHome] = useState(true);
   const [showEditTaskTitle, setShowEditTaskTitle] = useState(false);
 
 
@@ -57,12 +58,18 @@ export default function TeacherDashboard() {
 
     const { data } = await supabase
       .from("teachers")
-      .select("task_list_title")
+      .select("task_list_title, tasks_visible_on_home")
       .eq("id", user.id)
       .single();
 
     if (data?.task_list_title) {
       setTaskListTitle(data.task_list_title);
+    }
+
+    if (data?.tasks_visible_on_home !== undefined && data?.tasks_visible_on_home !== null) {
+      setTasksVisibleOnHome(data.tasks_visible_on_home);
+    } else {
+      setTasksVisibleOnHome(true);
     }
   }
 
@@ -207,6 +214,25 @@ async function saveTaskListTitle(newTitle) {
   setShowEditTaskTitle(false);
 }
 
+async function toggleTasksVisibleOnHome(event) {
+  const { checked } = event.target;
+  setTasksVisibleOnHome(checked);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { error } = await supabase
+    .from("teachers")
+    .update({ tasks_visible_on_home: checked })
+    .eq("id", user.id);
+
+  if (error) {
+    console.error("Error updating tasks visibility:", error);
+    setTasksVisibleOnHome(!checked); // revert on error
+    alert("Kon zichtbaarheid niet opslaan.");
+  }
+}
+
 
   // ---------- STUDENT ACTIONS ----------
 async function addStudent(name) {
@@ -309,6 +335,17 @@ async function addStudent(name) {
 
   {/* RIGHT SIDE — new task + reset icon */}
   <div className="flex items-center gap-3">
+
+    {/* SHOW TASKS ON CLASSROOM HOME */}
+    <label className="flex items-center gap-2 text-sm text-gray-700">
+      <input
+        type="checkbox"
+        checked={tasksVisibleOnHome}
+        onChange={toggleTasksVisibleOnHome}
+        className="h-4 w-4"
+      />
+      <span>Toon in klasoverzicht</span>
+    </label>
 
     {/* RESET ALL TASK COMPLETIONS */}
       <button

@@ -16,6 +16,7 @@ export default function ClassroomScreen() {
   const [showWelcome, setShowWelcome] = useState(false);
   const navigate = useNavigate();
   const [taskListTitle, setTaskListTitle] = useState("Taken van vandaag");
+  const [tasksVisibleOnHome, setTasksVisibleOnHome] = useState(true);
 
 
   useEffect(() => {
@@ -67,15 +68,22 @@ useEffect(() => {
 useEffect(() => {
   async function loadTitle() {
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
     const { data } = await supabase
       .from("teachers")
-      .select("task_list_title")
+      .select("task_list_title, tasks_visible_on_home")
       .eq("id", user.id)
       .single();
 
     if (data?.task_list_title) {
       setTaskListTitle(data.task_list_title);
+    }
+
+    if (data?.tasks_visible_on_home !== undefined && data?.tasks_visible_on_home !== null) {
+      setTasksVisibleOnHome(data.tasks_visible_on_home);
+    } else {
+      setTasksVisibleOnHome(true);
     }
   }
   loadTitle();
@@ -149,7 +157,7 @@ function closeModal() {
     <div className="flex gap-8 mt-4 items-start">
 
       {/* LEFT COLUMN — STUDENTS */}
-      <div className="w-2/3">
+      <div className={tasksVisibleOnHome ? "w-2/3" : "w-full"}>
         <StudentGrid
           students={students}
           onSelect={openStudentTasks}
@@ -159,29 +167,31 @@ function closeModal() {
       </div>
 
       {/* RIGHT COLUMN — TASKS */}
-      <div className="w-1/3 bg-gray-50 border rounded-xl p-6 shadow">
-      <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">
-        {taskListTitle}
-      </h2>
+      {tasksVisibleOnHome && (
+        <div className="w-1/3 bg-gray-50 border rounded-xl p-6 shadow">
+        <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">
+          {taskListTitle}
+        </h2>
 
-        {tasks.length === 0 ? (
-          <p className="text-gray-500 italic text-center">
-            Er zijn nog geen taken toegevoegd.
-          </p>
-        ) : (
-          <ul className="space-y-3">
-            {tasks.map((t) => (
-              <li
-                key={t.id}
-                className="p-4 bg-white border rounded-xl text-lg shadow flex items-center gap-3"
-              >
-                <span className="text-2xl">{t.icon}</span>
-                <span>{t.title}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+          {tasks.length === 0 ? (
+            <p className="text-gray-500 italic text-center">
+              Er zijn nog geen taken toegevoegd.
+            </p>
+          ) : (
+            <ul className="space-y-3">
+              {tasks.map((t) => (
+                <li
+                  key={t.id}
+                  className="p-4 bg-white border rounded-xl text-lg shadow flex items-center gap-3"
+                >
+                  <span className="text-2xl">{t.icon}</span>
+                  <span>{t.title}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
     </div>
 
