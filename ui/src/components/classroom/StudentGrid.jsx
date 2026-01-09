@@ -1,14 +1,20 @@
-export default function StudentGrid({ students, onSelect, progress = {}, totalTasks = 0 }) {
-  function getTileColor(completed) {
-    if (totalTasks === 0) return "bg-gray-100";      // No tasks
-    if (completed === 0) return "bg-gray-100";       // Not started → grey
+export default function StudentGrid({
+  students,
+  onSelect,
+  progress = {},
+  totalTasksByStudent = {},
+  optionalCompleted = {},
+}) {
+  function getTileColor(completed, totalTasks) {
+    if (totalTasks === 0) return "bg-gray-100";        // No tasks
+    if (completed === 0) return "bg-gray-100";         // Not started → grey
     if (completed < totalTasks) return "bg-orange-100"; // In progress
-    return "bg-green-100";                           // Completed
+    return "bg-green-100";                             // Completed
   }
 
-  function getBorderColor(completed) {
+  function getBorderColor(completed, totalTasks) {
     if (totalTasks === 0) return "border-gray-300";
-    if (completed === 0) return "border-gray-300";   // Not started → grey border
+    if (completed === 0) return "border-gray-300";    // Not started → grey border
     if (completed < totalTasks) return "border-orange-300";
     return "border-green-300";
   }
@@ -17,17 +23,24 @@ export default function StudentGrid({ students, onSelect, progress = {}, totalTa
     <div className="grid grid-cols-4 gap-4 mt-4">
       {students.map((student) => {
         const completed = progress[student.id] || 0;
+        const totalTasks = totalTasksByStudent[student.id] || 0;
+        const hasOptionalStar = optionalCompleted[student.id];
 
         return (
           <button
             key={student.id}
             onClick={() => onSelect(student)}
             className={
-              `p-4 rounded-xl shadow flex flex-col items-center transition ` +
-              `${getTileColor(completed)} ` +
-              `${getBorderColor(completed)} border`
+              `p-4 rounded-xl shadow flex flex-col items-center transition relative ` +
+              `${getTileColor(completed, totalTasks)} ` +
+              `${getBorderColor(completed, totalTasks)} border`
             }
           >
+            {hasOptionalStar && (
+              <span className="absolute top-2 right-2 text-xl" title="Extra taak gedaan">
+                ⭐
+              </span>
+            )}
             {/* Student name */}
             <span className="text-2xl font-semibold mb-2">
               {student.student_name}

@@ -1,13 +1,32 @@
 import { useState } from "react";
 import TaskIconPicker from "../TaskIconPicker";
 
-export default function EditTaskModal({ task, onClose, onSave }) {
+export default function EditTaskModal({
+  task,
+  audience,
+  setAudience,
+  groups,
+  selectedGroupIds,
+  setSelectedGroupIds,
+  onClose,
+  onSave,
+}) {
   const [title, setTitle] = useState(task.title);
   const [icon, setIcon] = useState(task.icon || "📘");
+  const [priority, setPriority] = useState(task.priority || "required");
+  const hasGroups = groups && groups.length > 0;
 
   function handleSave() {
     if (!title.trim()) return;
-    onSave(title, icon);
+    onSave(title, icon, priority, audience, selectedGroupIds);
+  }
+
+  function toggleGroup(groupId) {
+    setSelectedGroupIds((prev) =>
+      prev.includes(groupId)
+        ? prev.filter((id) => id !== groupId)
+        : [...prev, groupId]
+    );
   }
 
   return (
@@ -32,6 +51,95 @@ export default function EditTaskModal({ task, onClose, onSave }) {
 
         {/* Icon Picker */}
         <TaskIconPicker selectedIcon={icon} onSelect={setIcon} />
+
+        <div className="mt-4">
+          <label className="block font-medium mb-2">Type taak</label>
+
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="priority"
+                value="required"
+                checked={priority === "required"}
+                onChange={() => setPriority("required")}
+              />
+              Nodig
+            </label>
+
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="priority"
+                value="optional"
+                checked={priority === "optional"}
+                onChange={() => setPriority("optional")}
+              />
+              Extra
+            </label>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <label className="block font-medium mb-2">Voor wie?</label>
+
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="audience"
+                value="all"
+                checked={audience === "all"}
+                onChange={() => setAudience("all")}
+              />
+              Hele klas
+            </label>
+
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="audience"
+                value="targeted"
+                checked={audience === "targeted"}
+                onChange={() => setAudience("targeted")}
+              />
+              Specifiek
+            </label>
+          </div>
+        </div>
+
+        {audience === "targeted" && (
+          <div className="mt-4 space-y-4">
+            <div>
+              <p className="text-sm font-medium mb-2">Groepen</p>
+              {hasGroups ? (
+                <div className="flex flex-wrap gap-2">
+                  {groups.map((group) => {
+                    const isSelected = selectedGroupIds.includes(group.id);
+                    return (
+                      <button
+                        key={group.id}
+                        type="button"
+                        onClick={() => toggleGroup(group.id)}
+                        className={`px-3 py-1 rounded-full border text-sm ${
+                          isSelected
+                            ? "bg-blue-100 border-blue-300"
+                            : "bg-white"
+                        }`}
+                      >
+                        {group.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 italic">
+                  Nog geen groepen.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Buttons */}
         <div className="flex justify-end gap-3 mt-6">

@@ -1,6 +1,6 @@
 import { isDashboardUnlocked } from "../auth/DashboardLock";
 import { useNavigate } from "react-router-dom";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import supabase from "../supabaseClient";
 import EditTaskListTitleModal from "../components/tasks/EditTaskListTitleModal";
 
@@ -9,6 +9,9 @@ import StudentList from "../components/students/StudentList";
 import AddStudentModal from "../components/students/AddStudentModal";
 import DeleteStudentModal from "../components/students/DeleteStudentModal";
 import EditTaskModal from "../components/tasks/EditTaskModal";
+import AddGroupModal from "../components/groups/AddGroupModal";
+import EditGroupModal from "../components/groups/EditGroupModal";
+import DeleteGroupModal from "../components/groups/DeleteGroupModal";
 
 // Task components
 import AddTaskModal from "../components/tasks/AddTaskModal";
@@ -21,7 +24,9 @@ export default function TeacherDashboard() {
 
   const [students, setStudents] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [editTask, setEditTask] = useState(null); // holds task being edited
+  const [editGroup, setEditGroup] = useState(null);
 
   const [taskListTitle, setTaskListTitle] = useState("Taken van vandaag");
   const [tasksVisibleOnHome, setTasksVisibleOnHome] = useState(true);
@@ -33,9 +38,18 @@ export default function TeacherDashboard() {
 
   const [showAddTask, setShowAddTask] = useState(false);
   const [deleteTaskId, setDeleteTaskId] = useState(null);
+  const [showAddGroup, setShowAddGroup] = useState(false);
+  const [deleteGroupId, setDeleteGroupId] = useState(null);
 
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskIcon, setNewTaskIcon] = useState("📘");
+  const [newTaskPriority, setNewTaskPriority] = useState("required");
+  const [newTaskAudience, setNewTaskAudience] = useState("all");
+  const [newTaskGroupIds, setNewTaskGroupIds] = useState([]);
+
+  const [editTaskAudience, setEditTaskAudience] = useState("all");
+  const [editTaskGroupIds, setEditTaskGroupIds] = useState([]);
+  const [taskAssignmentsByTaskId, setTaskAssignmentsByTaskId] = useState({});
 
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
@@ -146,7 +160,7 @@ async function resetAllTaskStatuses() {
 }, []);
 
   // ---------- LOADERS ----------
-  async function loadStudents() {
+  const loadStudents = useCallback(async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -159,9 +173,51 @@ async function resetAllTaskStatuses() {
       .order("student_name", { ascending: true });
 
     setStudents(data || []);
-  }
+  }, []);
 
-  async function loadTasks() {
+  const loadGroups = useCallback(async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("groups")
+      .select("*")
+      .eq("teacher_id", user.id)
+      .order("created_at", { ascending: true });
+
+    setGroups(data || []);
+  }, []);
+
+  const loadTaskAssignmentsForList = useCallback(async (taskRows) => {
+    if (!taskRows || taskRows.length === 0) {
+      setTaskAssignmentsByTaskId({});
+      return;
+    }
+
+    const taskIds = taskRows.map((task) => task.id);
+    const { data, error } = await supabase
+      .from("task_assignments")
+      .select("task_id, group_id")
+      .in("task_id", taskIds);
+
+    if (error) {
+      console.error("Error loading task assignments:", error);
+      return;
+    }
+
+    const map = {};
+    (data || []).forEach((row) => {
+      if (!row.group_id) return;
+      if (!map[row.task_id]) map[row.task_id] = [];
+      map[row.task_id].push(row.group_id);
+    });
+
+    setTaskAssignmentsByTaskId(map);
+  }, []);
+
+  const loadTasks = useCallback(async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -173,28 +229,105 @@ async function resetAllTaskStatuses() {
       .eq("teacher_id", user.id)
       .order("created_at", { ascending: true });
 
-    setTasks(data || []);
-  }
+    const taskRows = data || [];
+    setTasks(taskRows);
+    loadTaskAssignmentsForList(taskRows);
+  }, [loadTaskAssignmentsForList]);
 
   useEffect(() => {
     loadStudents();
+    loadGroups();
     loadTasks();
+  }, [loadGroups, loadStudents, loadTasks]);
+
+  const loadTaskAssignments = useCallback(async (taskId) => {
+    const { data, error } = await supabase
+      .from("task_assignments")
+      .select("group_id")
+      .eq("task_id", taskId);
+
+    if (error) {
+      console.error("Error loading task assignments:", error);
+      return;
+    }
+
+    const groupIds = [];
+
+    (data || []).forEach((row) => {
+      if (row.group_id) groupIds.push(row.group_id);
+    });
+
+    setEditTaskGroupIds(groupIds);
   }, []);
+
+  useEffect(() => {
+    if (!editTask) {
+      setEditTaskAudience("all");
+      setEditTaskGroupIds([]);
+      return;
+    }
+
+    setEditTaskAudience(editTask.audience || "all");
+    setEditTaskGroupIds([]);
+    loadTaskAssignments(editTask.id);
+  }, [editTask, loadTaskAssignments]);
 
 
   // Update Tasks function
-async function updateTask(taskId, newTitle, newIcon) {
+async function updateTask(
+  taskId,
+  newTitle,
+  newIcon,
+  newPriority,
+  newAudience,
+  groupIds
+) {
+  const hasTargets = groupIds.length > 0;
+  const audience =
+    newAudience === "targeted" && hasTargets ? "targeted" : "all";
+
   const { error } = await supabase
     .from("tasks")
     .update({
       title: newTitle,
-      icon: newIcon
+      icon: newIcon,
+      priority: newPriority,
+      audience,
     })
     .eq("id", taskId);
 
   if (error) {
     console.error("Error updating task:", error);
     return;
+  }
+
+  const { error: deleteError } = await supabase
+    .from("task_assignments")
+    .delete()
+    .eq("task_id", taskId);
+
+  if (deleteError) {
+    console.error("Error clearing task assignments:", deleteError);
+    return;
+  }
+
+  if (audience === "targeted") {
+    const assignments = [
+      ...groupIds.map((groupId) => ({
+        task_id: taskId,
+        group_id: groupId,
+      })),
+    ];
+
+    if (assignments.length > 0) {
+      const { error: assignmentError } = await supabase
+        .from("task_assignments")
+        .insert(assignments);
+
+      if (assignmentError) {
+        console.error("Error updating task assignments:", assignmentError);
+      }
+    }
   }
 
   setEditTask(null);
@@ -263,18 +396,53 @@ async function addStudent(name) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const { error } = await supabase.from("tasks").insert([
-      {
-        title: newTaskTitle,
-        icon: newTaskIcon,
-        teacher_id: user.id,
-      },
-    ]);
+    const hasTargets = newTaskGroupIds.length > 0;
+    const audience =
+      newTaskAudience === "targeted" && hasTargets ? "targeted" : "all";
 
-    if (error) console.error(error);
+    const { data: createdTask, error } = await supabase
+      .from("tasks")
+      .insert([
+        {
+          title: newTaskTitle,
+          icon: newTaskIcon,
+          priority: newTaskPriority,
+          audience,
+          teacher_id: user.id,
+        },
+      ])
+      .select("id")
+      .single();
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    if (audience === "targeted" && createdTask?.id) {
+      const assignments = [
+        ...newTaskGroupIds.map((groupId) => ({
+          task_id: createdTask.id,
+          group_id: groupId,
+        })),
+      ];
+
+      if (assignments.length > 0) {
+        const { error: assignmentError } = await supabase
+          .from("task_assignments")
+          .insert(assignments);
+
+        if (assignmentError) {
+          console.error("Error creating task assignments:", assignmentError);
+        }
+      }
+    }
 
     setNewTaskTitle("");     // clear field
     setNewTaskIcon("📘");    // reset icon
+    setNewTaskPriority("required");
+    setNewTaskAudience("all");
+    setNewTaskGroupIds([]);
     loadTasks();             // keep modal open
     // DON'T CLOSE THE MODAL HERE
 
@@ -286,7 +454,15 @@ async function addStudent(name) {
     loadTasks();
   }
 
+  async function deleteGroup() {
+    await supabase.from("groups").delete().eq("id", deleteGroupId);
+    setDeleteGroupId(null);
+    loadGroups();
+  }
+
   // ---------- UI ----------
+  const groupNameById = new Map(groups.map((group) => [group.id, group.name]));
+
   return (
     <div className="min-h-screen bg-white p-6">
 
@@ -370,33 +546,107 @@ async function addStudent(name) {
           {tasks.length === 0 ? (
             <p className="text-gray-500 italic">Nog geen taken toegevoegd.</p>
           ) : (
-          <ul className="space-y-2">
-            {tasks.map((task) => (
-              <li
-                key={task.id}
-                className="flex items-center justify-between bg-gray-50 px-4 py-3 rounded-lg border cursor-pointer hover:bg-gray-100"
-                onClick={() => {
-                console.log("EDIT CLICKED", task);
-                setEditTask(task);
-              }}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{task.icon || "📘"}</span>
-                  <span className="text-gray-800">{task.title}</span>
-                </div>
+          <div className="space-y-5">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                Verplicht
+              </h3>
+              <ul className="space-y-2">
+                {tasks
+                  .filter((task) => task.priority !== "optional")
+                  .map((task) => (
+                    <li
+                      key={task.id}
+                      className="flex items-center justify-between bg-gray-50 px-4 py-3 rounded-lg border cursor-pointer hover:bg-gray-100"
+                      onClick={() => {
+                        console.log("EDIT CLICKED", task);
+                        setEditTask(task);
+                      }}
+                    >
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="text-2xl">{task.icon || "📘"}</span>
+                        <span className="text-gray-800">{task.title}</span>
+                        {task.audience === "targeted" &&
+                          (taskAssignmentsByTaskId[task.id] || [])
+                            .map((groupId) => ({
+                              id: groupId,
+                              name: groupNameById.get(groupId),
+                            }))
+                            .filter((group) => group.name)
+                            .map((group) => (
+                              <span
+                                key={group.id}
+                                className="text-xs bg-gray-200 px-2 py-1 rounded-full"
+                              >
+                                {group.name}
+                              </span>
+                            ))}
+                      </div>
 
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();  // prevent edit modal opening
-                    setDeleteTaskId(task.id);
-                  }}
-                  className="text-red-600 hover:underline"
-                >
-                  Verwijder
-                </button>
-              </li>
-            ))}
-          </ul>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation(); // prevent edit modal opening
+                          setDeleteTaskId(task.id);
+                        }}
+                        className="text-red-600 hover:underline"
+                      >
+                        Verwijder
+                      </button>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                Extra
+              </h3>
+              <ul className="space-y-2">
+                {tasks
+                  .filter((task) => task.priority === "optional")
+                  .map((task) => (
+                    <li
+                      key={task.id}
+                      className="flex items-center justify-between bg-gray-50 px-4 py-3 rounded-lg border cursor-pointer hover:bg-gray-100"
+                      onClick={() => {
+                        console.log("EDIT CLICKED", task);
+                        setEditTask(task);
+                      }}
+                    >
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="text-2xl">{task.icon || "📘"}</span>
+                        <span className="text-gray-800">{task.title}</span>
+                        {task.audience === "targeted" &&
+                          (taskAssignmentsByTaskId[task.id] || [])
+                            .map((groupId) => ({
+                              id: groupId,
+                              name: groupNameById.get(groupId),
+                            }))
+                            .filter((group) => group.name)
+                            .map((group) => (
+                              <span
+                                key={group.id}
+                                className="text-xs bg-gray-200 px-2 py-1 rounded-full"
+                              >
+                                {group.name}
+                              </span>
+                            ))}
+                      </div>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation(); // prevent edit modal opening
+                          setDeleteTaskId(task.id);
+                        }}
+                        className="text-red-600 hover:underline"
+                      >
+                        Verwijder
+                      </button>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          </div>
 
           )}
         </div>
@@ -417,6 +667,45 @@ async function addStudent(name) {
             students={students}
             onDelete={(id) => setDeleteStudentId(id)}
           />
+
+          <div className="mt-6 border-t pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold">Groepen</h3>
+              <button
+                type="button"
+                onClick={() => setShowAddGroup(true)}
+                className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                + Nieuwe groep
+              </button>
+            </div>
+
+            {groups.length === 0 ? (
+              <p className="text-gray-500 italic">Nog geen groepen.</p>
+            ) : (
+              <ul className="space-y-2">
+                {groups.map((group) => (
+                  <li
+                    key={group.id}
+                    className="flex items-center justify-between px-3 py-2 rounded-lg border bg-gray-100 hover:bg-gray-200 border-gray-200 cursor-pointer"
+                    onClick={() => setEditGroup(group)}
+                  >
+                    <span>{group.name}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteGroupId(group.id);
+                      }}
+                      className="text-red-600 hover:underline"
+                    >
+                      Verwijder
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </div>
 
@@ -436,6 +725,36 @@ async function addStudent(name) {
         <DeleteStudentModal
           onConfirm={deleteStudent}
           onClose={() => setDeleteStudentId(null)}
+        />
+      )}
+
+      {deleteGroupId && (
+        <DeleteGroupModal
+          onConfirm={deleteGroup}
+          onClose={() => setDeleteGroupId(null)}
+        />
+      )}
+
+      {showAddGroup && (
+        <AddGroupModal
+          students={students}
+          onClose={() => setShowAddGroup(false)}
+          onSaved={() => {
+            setShowAddGroup(false);
+            loadGroups();
+          }}
+        />
+      )}
+
+      {editGroup && (
+        <EditGroupModal
+          group={editGroup}
+          students={students}
+          onClose={() => setEditGroup(null)}
+          onSaved={() => {
+            setEditGroup(null);
+            loadGroups();
+          }}
         />
       )}
 
@@ -489,6 +808,13 @@ async function addStudent(name) {
           setTitle={setNewTaskTitle}
           selectedIcon={newTaskIcon}
           setSelectedIcon={setNewTaskIcon}
+          priority={newTaskPriority}
+          setPriority={setNewTaskPriority}
+          audience={newTaskAudience}
+          setAudience={setNewTaskAudience}
+          groups={groups}
+          selectedGroupIds={newTaskGroupIds}
+          setSelectedGroupIds={setNewTaskGroupIds}
           onAdd={addTask}
           onClose={() => setShowAddTask(false)}
         />
@@ -497,8 +823,22 @@ async function addStudent(name) {
       {editTask && (
         <EditTaskModal
           task={editTask}
+          audience={editTaskAudience}
+          setAudience={setEditTaskAudience}
+          groups={groups}
+          selectedGroupIds={editTaskGroupIds}
+          setSelectedGroupIds={setEditTaskGroupIds}
           onClose={() => setEditTask(null)}
-          onSave={(title, icon) => updateTask(editTask.id, title, icon)}
+          onSave={(title, icon, priority, audience, groupIds) =>
+            updateTask(
+              editTask.id,
+              title,
+              icon,
+              priority,
+              audience,
+              groupIds
+            )
+          }
         />
       )}
 

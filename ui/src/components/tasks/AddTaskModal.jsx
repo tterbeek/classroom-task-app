@@ -6,10 +6,18 @@ export default function AddTaskModal({
   setTitle,
   selectedIcon,
   setSelectedIcon,
+  priority,
+  setPriority,
+  audience,
+  setAudience,
+  groups,
+  selectedGroupIds,
+  setSelectedGroupIds,
   onAdd,
   onClose,
 }) {
   const inputRef = useRef(null);
+  const hasGroups = groups && groups.length > 0;
 
   // Focus the input whenever modal opens
   useEffect(() => {
@@ -23,7 +31,18 @@ export default function AddTaskModal({
     onAdd();            // save to DB
     setTitle("");       // clear title
     setSelectedIcon("📘"); // reset icon
+    setPriority("required");
+    setAudience("all");
+    setSelectedGroupIds([]);
     setTimeout(() => inputRef.current?.focus(), 50); // refocus for next task
+  }
+
+  function toggleGroup(groupId) {
+    setSelectedGroupIds((prev) =>
+      prev.includes(groupId)
+        ? prev.filter((id) => id !== groupId)
+        : [...prev, groupId]
+    );
   }
 
   return (
@@ -50,6 +69,95 @@ export default function AddTaskModal({
             selectedIcon={selectedIcon}
             onSelect={(icon) => setSelectedIcon(icon)}
           />
+
+          <div className="mb-4">
+            <label className="block font-medium mb-2">Type taak</label>
+
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="priority"
+                  value="required"
+                  checked={priority === "required"}
+                  onChange={() => setPriority("required")}
+                />
+                Nodig
+              </label>
+
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="priority"
+                  value="optional"
+                  checked={priority === "optional"}
+                  onChange={() => setPriority("optional")}
+                />
+                Extra
+              </label>
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <label className="block font-medium mb-2">Voor wie?</label>
+
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="audience"
+                  value="all"
+                  checked={audience === "all"}
+                  onChange={() => setAudience("all")}
+                />
+                Hele klas
+              </label>
+
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="audience"
+                  value="targeted"
+                  checked={audience === "targeted"}
+                  onChange={() => setAudience("targeted")}
+                />
+                Specifiek
+              </label>
+            </div>
+          </div>
+
+          {audience === "targeted" && (
+            <div className="mb-4 space-y-4">
+              <div>
+                <p className="text-sm font-medium mb-2">Groepen</p>
+                {hasGroups ? (
+                  <div className="flex flex-wrap gap-2">
+                    {groups.map((group) => {
+                      const isSelected = selectedGroupIds.includes(group.id);
+                      return (
+                        <button
+                          key={group.id}
+                          type="button"
+                          onClick={() => toggleGroup(group.id)}
+                          className={`px-3 py-1 rounded-full border text-sm ${
+                            isSelected
+                              ? "bg-blue-100 border-blue-300"
+                              : "bg-white"
+                          }`}
+                        >
+                          {group.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 italic">
+                    Nog geen groepen.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Bottom Buttons */}
           <div className="flex justify-end space-x-3 mt-6">

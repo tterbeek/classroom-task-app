@@ -13,6 +13,8 @@ export default function ClassroomScreen() {
   const [tasks, setTasks] = useState([]);
   const [activeStudent, setActiveStudent] = useState(null);
   const [progress, setProgress] = useState({});
+  const [optionalCompleted, setOptionalCompleted] = useState({});
+  const [totalTasksByStudent, setTotalTasksByStudent] = useState({});
   const [showWelcome, setShowWelcome] = useState(false);
   const navigate = useNavigate();
   const [taskListTitle, setTaskListTitle] = useState("Taken van vandaag");
@@ -22,7 +24,6 @@ export default function ClassroomScreen() {
   useEffect(() => {
     loadStudents();
     loadTasks();
-    loadProgress();
   }, []);
 
   async function loadStudents() {
@@ -121,20 +122,134 @@ async function loadProgress() {
 
   if (!user) return;
 
-  // Load all task statuses for this teacher's students
-  const { data: statuses } = await supabase
-    .from("task_status")
-    .select("*");
+  if (students.length === 0) {
+    setProgress({});
+    setOptionalCompleted({});
+    setTotalTasksByStudent({});
+    return;
+  }
 
-  const progressMap = {}; // studentId → completed count
+  const taskById = new Map(tasks.map((task) => [task.id, task]));
+  const requiredTaskIds = new Set(
+    tasks.filter((task) => task.priority !== "optional").map((task) => task.id)
+  );
+  const allTaskIds = new Set(
+    tasks.filter((task) => task.audience !== "targeted").map((task) => task.id)
+  );
 
-  statuses?.forEach((s) => {
-    if (!progressMap[s.student_id]) progressMap[s.student_id] = 0;
-    if (s.completed) progressMap[s.student_id]++;
+  const { data: groupRows } = await supabase
+    .from("groups")
+    .select("id")
+    .eq("teacher_id", user.id);
+
+  const groupIds = (groupRows || []).map((row) => row.id);
+
+  let groupStudents = [];
+  if (groupIds.length > 0) {
+    const { data } = await supabase
+      .from("group_students")
+      .select("group_id, student_id")
+      .in("group_id", groupIds);
+    groupStudents = data || [];
+  }
+
+  const studentGroupsMap = new Map();
+  groupStudents.forEach((row) => {
+    if (!studentGroupsMap.has(row.student_id)) {
+      studentGroupsMap.set(row.student_id, new Set());
+    }
+    studentGroupsMap.get(row.student_id).add(row.group_id);
+  });
+
+  let assignmentRows = [];
+  if (tasks.length > 0) {
+    const taskIds = tasks.map((task) => task.id);
+    const { data } = await supabase
+      .from("task_assignments")
+      .select("task_id, group_id")
+      .in("task_id", taskIds);
+    assignmentRows = data || [];
+  }
+
+  const assignmentsByGroup = new Map();
+
+  assignmentRows.forEach((row) => {
+    if (row.group_id) {
+      if (!assignmentsByGroup.has(row.group_id)) {
+        assignmentsByGroup.set(row.group_id, new Set());
+      }
+      assignmentsByGroup.get(row.group_id).add(row.task_id);
+    }
+  });
+
+  const visibleTasksByStudent = new Map();
+  const totalTasksMap = {};
+
+  students.forEach((student) => {
+    const visible = new Set(allTaskIds);
+
+    const studentGroups = studentGroupsMap.get(student.id);
+    if (studentGroups) {
+      studentGroups.forEach((groupId) => {
+        const groupTasks = assignmentsByGroup.get(groupId);
+        if (!groupTasks) return;
+        groupTasks.forEach((taskId) => {
+          if (taskById.get(taskId)?.audience === "targeted") {
+            visible.add(taskId);
+          }
+        });
+      });
+    }
+
+    let requiredCount = 0;
+    visible.forEach((taskId) => {
+      if (requiredTaskIds.has(taskId)) requiredCount++;
+    });
+
+    visibleTasksByStudent.set(student.id, visible);
+    totalTasksMap[student.id] = requiredCount;
+  });
+
+  const studentIds = students.map((student) => student.id);
+  const taskIds = tasks.map((task) => task.id);
+
+  let statusRows = [];
+  if (studentIds.length > 0 && taskIds.length > 0) {
+    const { data } = await supabase
+      .from("task_status")
+      .select("student_id, task_id, completed")
+      .in("student_id", studentIds)
+      .in("task_id", taskIds);
+    statusRows = data || [];
+  }
+
+  const progressMap = {}; // studentId → completed required count
+  const optionalMap = {}; // studentId → completed optional task
+
+  statusRows.forEach((row) => {
+    if (!row.completed) return;
+
+    const visible = visibleTasksByStudent.get(row.student_id);
+    if (!visible || !visible.has(row.task_id)) return;
+
+    const task = taskById.get(row.task_id);
+    if (!task) return;
+
+    if (task.priority === "optional") {
+      optionalMap[row.student_id] = true;
+    } else {
+      progressMap[row.student_id] = (progressMap[row.student_id] || 0) + 1;
+    }
   });
 
   setProgress(progressMap);
+  setOptionalCompleted(optionalMap);
+  setTotalTasksByStudent(totalTasksMap);
 }
+
+  useEffect(() => {
+    loadProgress();
+  }, [tasks, students]);
 
 function closeModal() {
   setActiveStudent(null);
@@ -143,6 +258,8 @@ function closeModal() {
 
 
   
+  const classTasks = tasks.filter((task) => task.audience !== "targeted");
+
   return (
   <div className="min-h-screen bg-white p-6 relative">
 
@@ -162,7 +279,8 @@ function closeModal() {
           students={students}
           onSelect={openStudentTasks}
           progress={progress}
-          totalTasks={tasks.length}
+          totalTasksByStudent={totalTasksByStudent}
+          optionalCompleted={optionalCompleted}
         />
       </div>
 
@@ -173,19 +291,30 @@ function closeModal() {
           {taskListTitle}
         </h2>
 
-          {tasks.length === 0 ? (
+          {classTasks.length === 0 ? (
             <p className="text-gray-500 italic text-center">
               Er zijn nog geen taken toegevoegd.
             </p>
           ) : (
             <ul className="space-y-3">
-              {tasks.map((t) => (
+              {[...classTasks]
+                .sort((a, b) => (a.priority === "optional") - (b.priority === "optional"))
+                .map((t) => (
                 <li
                   key={t.id}
-                  className="p-4 bg-white border rounded-xl text-lg shadow flex items-center gap-3"
+                  className={`p-4 rounded-xl border text-lg shadow flex items-center gap-3 ${
+                    t.priority === "optional"
+                      ? "bg-gray-100 text-gray-600"
+                      : "bg-white"
+                  }`}
                 >
-                  <span className="text-2xl">{t.icon}</span>
+                  <span className="text-2xl">{t.icon || "📘"}</span>
                   <span>{t.title}</span>
+                  {t.priority === "optional" && (
+                    <span className="text-xs bg-gray-300 px-2 py-1 rounded-full">
+                      extra
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>

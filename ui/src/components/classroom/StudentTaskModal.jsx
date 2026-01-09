@@ -18,7 +18,33 @@ export default function StudentTaskModal({ student, onClose }) {
         .eq("teacher_id", student.teacher_id)
         .order("created_at", { ascending: true });
 
-      setTasks(tasksData || []);
+      const { data: groupRows } = await supabase
+        .from("group_students")
+        .select("group_id")
+        .eq("student_id", student.id);
+
+      const groupIds = (groupRows || []).map((row) => row.group_id);
+
+      let groupAssignments = [];
+      if (groupIds.length > 0) {
+        const { data } = await supabase
+          .from("task_assignments")
+          .select("task_id")
+          .in("group_id", groupIds);
+        groupAssignments = data || [];
+      }
+
+      const assignedTaskIds = new Set([
+        ...groupAssignments.map((row) => row.task_id),
+      ]);
+
+      const visibleTasks = (tasksData || []).filter(
+        (task) =>
+          task.audience !== "targeted" ||
+          (task.audience === "targeted" && assignedTaskIds.has(task.id))
+      );
+
+      setTasks(visibleTasks);
 
       const { data: statusData } = await supabase
         .from("task_status")
@@ -37,9 +63,10 @@ export default function StudentTaskModal({ student, onClose }) {
   // Toggle a task status
   async function toggleTask(taskId) {
     const newValue = !statuses[taskId];
+    const nextStatuses = { ...statuses, [taskId]: newValue };
 
     // Update UI instantly
-    setStatuses((prev) => ({ ...prev, [taskId]: newValue }));
+    setStatuses(nextStatuses);
 
     // Update DB
     const existing = await supabase
@@ -70,12 +97,15 @@ export default function StudentTaskModal({ student, onClose }) {
       playSafe(swoosh);
     }
 
-    // Check if all tasks are completed
+    const requiredTasks = tasks.filter((task) => task.priority !== "optional");
+    const wasAllDone =
+      requiredTasks.length > 0 &&
+      requiredTasks.every((task) => statuses[task.id]);
     const allDone =
-      Object.values({ ...statuses, [taskId]: newValue }).filter(Boolean)
-        .length === tasks.length;
+      requiredTasks.length > 0 &&
+      requiredTasks.every((task) => nextStatuses[task.id]);
 
-    if (allDone) {
+    if (allDone && !wasAllDone) {
       ting.volume = 1;
       playSafe(ting);
     }
@@ -120,10 +150,16 @@ function playSafe(audio) {
             </p>
           )}
 
-          {tasks.map((task) => (
+          {[...tasks]
+            .sort((a, b) => (a.priority === "optional") - (b.priority === "optional"))
+            .map((task) => (
             <label
               key={task.id}
-              className="flex items-center gap-4 p-4 border rounded-xl shadow bg-gray-50 cursor-pointer"
+              className={`flex items-center gap-4 p-4 border rounded-xl shadow cursor-pointer ${
+                task.priority === "optional"
+                  ? "bg-gray-100 text-gray-600"
+                  : "bg-white"
+              }`}
             >
               {/* Checkbox */}
               <input
@@ -134,10 +170,16 @@ function playSafe(audio) {
               />
 
               {/* Icon + Title */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-1">
                 <span className="text-3xl">{task.icon || "📘"}</span>
                 <span className="text-xl">{task.title}</span>
               </div>
+
+              {task.priority === "optional" && (
+                <span className="text-xs bg-gray-300 px-2 py-1 rounded-full">
+                  extra
+                </span>
+              )}
             </label>
           ))}
         </div>
