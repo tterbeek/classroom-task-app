@@ -308,13 +308,27 @@ function closeModal() {
                       : "bg-white"
                   }`}
                 >
-                  <span className="text-2xl">{t.icon || "📘"}</span>
-                  <span>{t.title}</span>
-                  {t.priority === "optional" && (
-                    <span className="text-xs bg-gray-300 px-2 py-1 rounded-full">
-                      extra
-                    </span>
-                  )}
+                  <div className="flex items-center gap-3 flex-1">
+                    <span className="text-2xl">{t.icon || "📘"}</span>
+                    <span>{t.title}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {t.samenwerken && (
+                      <span className="text-lg" title="Samenwerken">
+                        🤝
+                      </span>
+                    )}
+                    {t.zelf_nakijken && (
+                      <span className="text-lg" title="Zelf nakijken">
+                        🔑
+                      </span>
+                    )}
+                    {t.priority === "optional" && (
+                      <span className="text-xs bg-gray-300 px-2 py-1 rounded-full">
+                        extra
+                      </span>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>

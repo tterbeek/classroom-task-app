@@ -44,6 +44,8 @@ export default function TeacherDashboard() {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskIcon, setNewTaskIcon] = useState("📘");
   const [newTaskPriority, setNewTaskPriority] = useState("required");
+  const [newTaskSamenwerken, setNewTaskSamenwerken] = useState(false);
+  const [newTaskZelfNakijken, setNewTaskZelfNakijken] = useState(false);
   const [newTaskAudience, setNewTaskAudience] = useState("all");
   const [newTaskGroupIds, setNewTaskGroupIds] = useState([]);
 
@@ -280,7 +282,9 @@ async function updateTask(
   newIcon,
   newPriority,
   newAudience,
-  groupIds
+  groupIds,
+  samenwerken,
+  zelfNakijken
 ) {
   const hasTargets = groupIds.length > 0;
   const audience =
@@ -293,6 +297,8 @@ async function updateTask(
       icon: newIcon,
       priority: newPriority,
       audience,
+      samenwerken,
+      zelf_nakijken: zelfNakijken,
     })
     .eq("id", taskId);
 
@@ -407,6 +413,8 @@ async function addStudent(name) {
           title: newTaskTitle,
           icon: newTaskIcon,
           priority: newTaskPriority,
+          samenwerken: newTaskSamenwerken,
+          zelf_nakijken: newTaskZelfNakijken,
           audience,
           teacher_id: user.id,
         },
@@ -441,6 +449,8 @@ async function addStudent(name) {
     setNewTaskTitle("");     // clear field
     setNewTaskIcon("📘");    // reset icon
     setNewTaskPriority("required");
+    setNewTaskSamenwerken(false);
+    setNewTaskZelfNakijken(false);
     setNewTaskAudience("all");
     setNewTaskGroupIds([]);
     loadTasks();             // keep modal open
@@ -583,15 +593,27 @@ async function addStudent(name) {
                             ))}
                       </div>
 
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation(); // prevent edit modal opening
-                          setDeleteTaskId(task.id);
-                        }}
-                        className="text-red-600 hover:underline"
-                      >
-                        Verwijder
-                      </button>
+                      <div className="flex items-center gap-3">
+                        {task.samenwerken && (
+                          <span className="text-lg" title="Samenwerken">
+                            🤝
+                          </span>
+                        )}
+                        {task.zelf_nakijken && (
+                          <span className="text-lg" title="Zelf nakijken">
+                            🔑
+                          </span>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation(); // prevent edit modal opening
+                            setDeleteTaskId(task.id);
+                          }}
+                          className="text-red-600 hover:underline"
+                        >
+                          Verwijder
+                        </button>
+                      </div>
                     </li>
                   ))}
               </ul>
@@ -633,15 +655,27 @@ async function addStudent(name) {
                             ))}
                       </div>
 
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation(); // prevent edit modal opening
-                          setDeleteTaskId(task.id);
-                        }}
-                        className="text-red-600 hover:underline"
-                      >
-                        Verwijder
-                      </button>
+                      <div className="flex items-center gap-3">
+                        {task.samenwerken && (
+                          <span className="text-lg" title="Samenwerken">
+                            🤝
+                          </span>
+                        )}
+                        {task.zelf_nakijken && (
+                          <span className="text-lg" title="Zelf nakijken">
+                            🔑
+                          </span>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation(); // prevent edit modal opening
+                            setDeleteTaskId(task.id);
+                          }}
+                          className="text-red-600 hover:underline"
+                        >
+                          Verwijder
+                        </button>
+                      </div>
                     </li>
                   ))}
               </ul>
@@ -810,6 +844,10 @@ async function addStudent(name) {
           setSelectedIcon={setNewTaskIcon}
           priority={newTaskPriority}
           setPriority={setNewTaskPriority}
+          samenwerken={newTaskSamenwerken}
+          setSamenwerken={setNewTaskSamenwerken}
+          zelfNakijken={newTaskZelfNakijken}
+          setZelfNakijken={setNewTaskZelfNakijken}
           audience={newTaskAudience}
           setAudience={setNewTaskAudience}
           groups={groups}
@@ -829,14 +867,24 @@ async function addStudent(name) {
           selectedGroupIds={editTaskGroupIds}
           setSelectedGroupIds={setEditTaskGroupIds}
           onClose={() => setEditTask(null)}
-          onSave={(title, icon, priority, audience, groupIds) =>
+          onSave={(
+            title,
+            icon,
+            priority,
+            audience,
+            groupIds,
+            samenwerken,
+            zelfNakijken
+          ) =>
             updateTask(
               editTask.id,
               title,
               icon,
               priority,
               audience,
-              groupIds
+              groupIds,
+              samenwerken,
+              zelfNakijken
             )
           }
         />

@@ -14,11 +14,21 @@ export default function EditTaskModal({
   const [title, setTitle] = useState(task.title);
   const [icon, setIcon] = useState(task.icon || "📘");
   const [priority, setPriority] = useState(task.priority || "required");
+  const [samenwerken, setSamenwerken] = useState(!!task.samenwerken);
+  const [zelfNakijken, setZelfNakijken] = useState(!!task.zelf_nakijken);
   const hasGroups = groups && groups.length > 0;
 
   function handleSave() {
     if (!title.trim()) return;
-    onSave(title, icon, priority, audience, selectedGroupIds);
+    onSave(
+      title,
+      icon,
+      priority,
+      audience,
+      selectedGroupIds,
+      samenwerken,
+      zelfNakijken
+    );
   }
 
   function toggleGroup(groupId) {
@@ -76,6 +86,60 @@ export default function EditTaskModal({
                 onChange={() => setPriority("optional")}
               />
               Extra
+            </label>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <label className="block font-medium mb-2">Samenwerken?</label>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="samenwerken"
+                value="yes"
+                checked={samenwerken === true}
+                onChange={() => setSamenwerken(true)}
+              />
+              Ja
+            </label>
+
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="samenwerken"
+                value="no"
+                checked={samenwerken === false}
+                onChange={() => setSamenwerken(false)}
+              />
+              Nee
+            </label>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <label className="block font-medium mb-2">Zelf nakijken?</label>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="zelfNakijken"
+                value="yes"
+                checked={zelfNakijken === true}
+                onChange={() => setZelfNakijken(true)}
+              />
+              Ja
+            </label>
+
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="zelfNakijken"
+                value="no"
+                checked={zelfNakijken === false}
+                onChange={() => setZelfNakijken(false)}
+              />
+              Nee
             </label>
           </div>
         </div>

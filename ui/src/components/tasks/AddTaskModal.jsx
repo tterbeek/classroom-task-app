@@ -8,6 +8,10 @@ export default function AddTaskModal({
   setSelectedIcon,
   priority,
   setPriority,
+  samenwerken,
+  setSamenwerken,
+  zelfNakijken,
+  setZelfNakijken,
   audience,
   setAudience,
   groups,
@@ -32,6 +36,8 @@ export default function AddTaskModal({
     setTitle("");       // clear title
     setSelectedIcon("📘"); // reset icon
     setPriority("required");
+    setSamenwerken(false);
+    setZelfNakijken(false);
     setAudience("all");
     setSelectedGroupIds([]);
     setTimeout(() => inputRef.current?.focus(), 50); // refocus for next task
@@ -94,6 +100,58 @@ export default function AddTaskModal({
                   onChange={() => setPriority("optional")}
                 />
                 Extra
+              </label>
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <label className="block font-medium mb-2">Samenwerken?</label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="samenwerken"
+                  value="yes"
+                  checked={samenwerken === true}
+                  onChange={() => setSamenwerken(true)}
+                />
+                Ja
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="samenwerken"
+                  value="no"
+                  checked={samenwerken === false}
+                  onChange={() => setSamenwerken(false)}
+                />
+                Nee
+              </label>
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <label className="block font-medium mb-2">Zelf nakijken?</label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="zelfNakijken"
+                  value="yes"
+                  checked={zelfNakijken === true}
+                  onChange={() => setZelfNakijken(true)}
+                />
+                Ja
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="zelfNakijken"
+                  value="no"
+                  checked={zelfNakijken === false}
+                  onChange={() => setZelfNakijken(false)}
+                />
+                Nee
               </label>
             </div>
           </div>

@@ -175,11 +175,23 @@ function playSafe(audio) {
                 <span className="text-xl">{task.title}</span>
               </div>
 
-              {task.priority === "optional" && (
-                <span className="text-xs bg-gray-300 px-2 py-1 rounded-full">
-                  extra
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {task.samenwerken && (
+                  <span className="text-lg" title="Samenwerken">
+                    🤝
+                  </span>
+                )}
+                {task.zelf_nakijken && (
+                  <span className="text-lg" title="Zelf nakijken">
+                    🔑
+                  </span>
+                )}
+                {task.priority === "optional" && (
+                  <span className="text-xs bg-gray-300 px-2 py-1 rounded-full">
+                    extra
+                  </span>
+                )}
+              </div>
             </label>
           ))}
         </div>
