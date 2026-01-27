@@ -37,7 +37,7 @@ export default function StudentGrid({
             }
           >
             {hasOptionalStar && (
-              <span className="absolute top-2 right-2 text-xl" title="Extra taak gedaan">
+              <span className="absolute top-2 right-2 text-xl" title="Magje taak gedaan">
                 ⭐
               </span>
             )}

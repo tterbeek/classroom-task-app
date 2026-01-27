@@ -188,7 +188,7 @@ function playSafe(audio) {
                 )}
                 {task.priority === "optional" && (
                   <span className="text-xs bg-gray-300 px-2 py-1 rounded-full">
-                    extra
+                    magje
                   </span>
                 )}
               </div>

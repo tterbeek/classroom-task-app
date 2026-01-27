@@ -559,7 +559,7 @@ async function addStudent(name) {
           <div className="space-y-5">
             <div>
               <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                Verplicht
+                Moetjes
               </h3>
               <ul className="space-y-2">
                 {tasks
@@ -621,7 +621,7 @@ async function addStudent(name) {
 
             <div>
               <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                Extra
+                Magjes
               </h3>
               <ul className="space-y-2">
                 {tasks

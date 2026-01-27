@@ -88,7 +88,7 @@ export default function AddTaskModal({
                   checked={priority === "required"}
                   onChange={() => setPriority("required")}
                 />
-                Nodig
+                Moetjes
               </label>
 
               <label className="flex items-center gap-2">
@@ -99,7 +99,7 @@ export default function AddTaskModal({
                   checked={priority === "optional"}
                   onChange={() => setPriority("optional")}
                 />
-                Extra
+                Magjes
               </label>
             </div>
           </div>
