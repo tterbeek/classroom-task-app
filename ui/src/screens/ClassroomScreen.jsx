@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import supabase from "../supabaseClient";
 import { Cog6ToothIcon } from "@heroicons/react/24/outline";
@@ -115,7 +115,7 @@ useEffect(() => {
     setActiveStudent(student);
   }
 
-async function loadProgress() {
+const loadProgress = useCallback(async () => {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -245,11 +245,11 @@ async function loadProgress() {
   setProgress(progressMap);
   setOptionalCompleted(optionalMap);
   setTotalTasksByStudent(totalTasksMap);
-}
+}, [students, tasks]);
 
   useEffect(() => {
     loadProgress();
-  }, [tasks, students]);
+  }, [loadProgress]);
 
 function closeModal() {
   setActiveStudent(null);
